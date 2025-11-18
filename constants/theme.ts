@@ -4,6 +4,7 @@ export const colors = {
   primary: "#E4825D",
   primaryLight: "#EDAC94",
   primaryDark: "#DA5725",
+  chatBox: "#F3ECEB",
   text: "#292524",
   white: "#fff",
   black: "#000",
@@ -57,6 +58,7 @@ export const spacingY = {
 export const radius = {
   _3: verticalScale(3),
   _6: verticalScale(6),
+  _8: verticalScale(8),
   _10: verticalScale(10),
   _12: verticalScale(12),
   _15: verticalScale(15),

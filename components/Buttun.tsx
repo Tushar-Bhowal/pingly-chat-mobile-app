@@ -19,6 +19,7 @@ export default function Button({
       </View>
     );
   }
+
   return (
     <TouchableOpacity
       style={[styles.button, style]}
@@ -32,7 +33,7 @@ export default function Button({
 const styles = StyleSheet.create({
   button: {
     backgroundColor: colors.primary,
-    borderRadius: radius.full,
+    borderRadius: radius._6,
     borderCurve: "continuous",
     height: verticalScale(50),
     justifyContent: "center",

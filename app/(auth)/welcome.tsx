@@ -107,7 +107,7 @@ export default function Welcome() {
   };
 
   return (
-    <ScreenWrapper showPattern={true}>
+    <ScreenWrapper showPattern={true} bgOpacity={0.8}>
       <View style={styles.container}>
         <View>
           {/* Row 1 */}

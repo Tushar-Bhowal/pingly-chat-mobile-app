@@ -1,15 +1,191 @@
-import { StyleSheet, Text, View } from "react-native";
-import React from "react";
+import {
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import React, { useRef, useState } from "react";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
-import { colors } from "@/constants/theme";
+import { colors, radius, spacingX, spacingY } from "@/constants/theme";
+import BackButton from "@/components/BackButton";
+import { useRouter } from "expo-router";
+import Input from "@/components/Input";
+import * as Icons from "phosphor-react-native";
+import { scale, verticalScale } from "@/utils/styling";
+import Button from "@/components/Buttun";
 
 export default function Register() {
+  const nameRef = useRef("");
+  const emailRef = useRef("");
+  const passwordRef = useRef("");
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const handleSubmit = async () => {
+    if (!emailRef.current || !passwordRef.current || !nameRef.current) {
+      Alert.alert("Sign Up", "Please fill all the fields");
+      return;
+    }
+    // good to go
+  };
+
   return (
-    <ScreenWrapper>
-      <Typo color={colors.white}>Register</Typo>
-    </ScreenWrapper>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScreenWrapper showPattern={true}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <BackButton iconSize={28} />
+          </View>
+
+          <View style={styles.content}>
+            <ScrollView
+              contentContainerStyle={styles.form}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={{ gap: spacingY._10, marginBottom: spacingY._15 }}>
+                <Typo size={28} fontWeight={"600"}>
+                  Getting Started
+                </Typo>
+                <Typo color={colors.neutral600}>
+                  Create an account to continue
+                </Typo>
+              </View>
+              <Input
+                placeholder="Enter your name"
+                onChangeText={(value: string) => (nameRef.current = value)}
+                icon={
+                  <Icons.UserIcon
+                    size={verticalScale(26)}
+                    color={colors.primary}
+                  />
+                }
+              />
+              <Input
+                placeholder="Enter your email"
+                onChangeText={(value: string) => (emailRef.current = value)}
+                icon={
+                  <Icons.AtIcon
+                    size={verticalScale(26)}
+                    color={colors.primary}
+                  />
+                }
+              />
+              <Input
+                placeholder="Enter your password"
+                secureTextEntry
+                onChangeText={(value: string) => (passwordRef.current = value)}
+                icon={
+                  <Icons.LockIcon
+                    size={verticalScale(26)}
+                    color={colors.primary}
+                  />
+                }
+              />
+              <View style={{ marginTop: spacingY._25, gap: spacingY._15 }}>
+                <Button loading={isLoading} onPress={handleSubmit}>
+                  <Typo fontWeight={"bold"} color={colors.black} size={20}>
+                    Sign Up
+                  </Typo>
+                </Button>
+                <View style={[styles.dividerContainer]}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or continue with</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+                <Button
+                  loading={isLoading}
+                  onPress={handleSubmit}
+                  style={styles.googleButtun}
+                >
+                  <Image
+                    source={require("../../assets/google.png")}
+                    style={{ width: scale(25), height: scale(25) }}
+                  ></Image>
+                  <Typo fontWeight={"bold"} color={colors.black} size={20}>
+                    Google
+                  </Typo>
+                </Button>
+                <View style={styles.footer}>
+                  <Typo>Already have an account?</Typo>
+                  <Pressable onPress={() => router.push("/(auth)/Login")}>
+                    <Typo fontWeight={"bold"} color={colors.primaryDark}>
+                      Login
+                    </Typo>
+                  </Pressable>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </ScreenWrapper>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  header: {
+    paddingHorizontal: spacingX._20,
+    paddingTop: spacingY._15,
+    paddingBottom: spacingY._25,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  content: {
+    flex: 1,
+    backgroundColor: colors.chatBox,
+    borderTopLeftRadius: radius._50,
+    borderTopRightRadius: radius._50,
+    borderCurve: "continuous",
+    paddingHorizontal: spacingX._20,
+    paddingTop: spacingY._20,
+  },
+  googleButtun: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacingY._5,
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: colors.neutral300,
+    borderRadius: radius._6,
+    borderCurve: "continuous",
+  },
+  form: {
+    gap: spacingY._15,
+    marginTop: spacingX._20,
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 5,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: spacingY._10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.neutral300,
+  },
+  dividerText: {
+    color: colors.neutral400,
+    fontSize: verticalScale(14),
+    paddingHorizontal: spacingX._15,
+    fontWeight: "500",
+  },
+});
