@@ -32,6 +32,10 @@ export default function Register() {
       return;
     }
     // good to go
+    router.push({
+      pathname: "/(auth)/otp-verification",
+      params: { email: emailRef.current, flow: "signup" },
+    });
   };
 
   return (

@@ -84,7 +84,7 @@ export default function Login() {
               />
 
               {/* --- Forgot Password --- */}
-              <Pressable onPress={() => console.log("Forgot Password pressed")}>
+              <Pressable onPress={() => router.push("/(auth)/forgot-password")}>
                 <Typo
                   size={14}
                   color={colors.text}
