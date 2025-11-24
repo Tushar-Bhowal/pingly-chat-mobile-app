@@ -24,7 +24,6 @@ export interface UserProps {
   name: string;
   avatar?: string | null;
   id?: string;
-  phoneNumber?: string; // For OTP via phone
   isOnline?: boolean; // Real-time online status
   lastSeen?: string; // ISO timestamp of last activity
 }
@@ -33,7 +32,6 @@ export interface UserDataProps {
   name: string;
   email: string;
   avatar?: any;
-  phoneNumber?: string; // NEW: For registration with phone
 }
 
 export interface InputProps extends TextInputProps {
@@ -61,7 +59,6 @@ export type AuthContextProps = {
     password: string,
     name: string,
     avatar?: string,
-    phoneNumber?: string // Optional phone during signup
   ) => Promise<void>;
   signOut: () => Promise<void>;
   updateToken: (token: string) => Promise<void>;
