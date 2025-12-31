@@ -1,19 +1,21 @@
 import express, { Request, Response } from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import helmet from "helmet";
 import connectDB from "./config/db";
 import authRoutes from "./routes/auth.routes";
 dotenv.config();
 
 const app = express();
 
+// Security middleware
+app.use(helmet());
 app.use(express.json());
 app.use(cors());
 
 app.get("/", (req: Request, res: Response) => {
   res.send("Server is running");
 });
-
 
 app.use("/api/auth", authRoutes);
 

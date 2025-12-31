@@ -2,22 +2,28 @@ import { Router } from "express";
 import {
   register,
   login,
+  refreshTokenHandler,
   verifyOTP,
   forgotPassword,
-  resetPassword,
   logout,
   getMe,
 } from "../controllers/auth.controller";
+import { authMiddleware } from "../middleware/auth";
+import { loginRateLimiter, otpRateLimiter } from "../middleware/rateLimiter";
 
 const router = Router();
 
-// Define routes
+// Public routes
 router.post("/register", register);
-router.post("/login", login);
-router.post("/verify-otp", verifyOTP);
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
-router.post("/logout", logout);
-router.get("/me", getMe);
+router.post("/login", loginRateLimiter, login);
+router.post("/refresh-token", refreshTokenHandler);
+
+// OTP routes (rate limited)
+router.post("/forgot-password", otpRateLimiter, forgotPassword);
+router.post("/verify-otp", otpRateLimiter, verifyOTP);
+
+// Protected routes (require authentication)
+router.post("/logout", authMiddleware, logout);
+router.get("/me", authMiddleware, getMe);
 
 export default router;
