@@ -61,9 +61,8 @@ const UserSchema = new Schema<UserProps>(
   }
 );
 
-// Index for faster lookups
-UserSchema.index({ email: 1 });
-UserSchema.index({ name: "text" }); // Enable text search on name
+// Index for text search on name
+UserSchema.index({ name: "text" });
 
 const User = mongoose.model<UserProps>("User", UserSchema);
 
