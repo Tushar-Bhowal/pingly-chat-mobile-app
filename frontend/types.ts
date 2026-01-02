@@ -20,12 +20,13 @@ export type TypoProps = {
 
 // Added OTP and online status fields
 export interface UserProps {
+  _id: string; // MongoDB ObjectId
   email: string;
   name: string;
   avatar?: string | null;
-  id?: string;
   isOnline?: boolean; // Real-time online status
   lastSeen?: string; // ISO timestamp of last activity
+  isVerified?: boolean; // Email verification status
 }
 
 export interface UserDataProps {
@@ -51,20 +52,23 @@ export interface DecodedTokenProps {
 
 // ENHANCED: Added OTP verification method
 export type AuthContextProps = {
-  token: string | null;
   user: UserProps | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (
-    email: string,
-    password: string,
-    name: string,
-    avatar?: string,
-  ) => Promise<void>;
+  signUp: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  updateToken: (token: string) => Promise<void>;
-  sendOTP: (email: string) => Promise<void>; // Send OTP to email
-  verifyOTP: (email: string, otp: string) => Promise<void>; // Verify OTP
+  forgotPassword: (email: string) => Promise<void>;
+  verifyOTP: (email: string, otp: string) => Promise<boolean>;
 };
+
+// API Response types
+export interface AuthResponse {
+  message: string;
+  user: UserProps;
+  accessToken: string;
+  refreshToken: string;
+}
 
 export type ScreenWrapperProps = {
   style?: ViewStyle;
@@ -178,7 +182,7 @@ export type TypingIndicatorProps = {
   isTyping: boolean; // true when user starts typing, false when stops
 };
 
-// For real-time presence updates 
+// For real-time presence updates
 export type UserPresenceProps = {
   userId: string;
   isOnline: boolean;

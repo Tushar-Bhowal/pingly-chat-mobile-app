@@ -19,19 +19,31 @@ import Input from "@/components/Input";
 import * as Icons from "phosphor-react-native";
 import { scale, verticalScale } from "@/utils/styling";
 import Button from "@/components/Buttun";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Login() {
   const emailRef = useRef("");
   const passwordRef = useRef("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { signIn } = useAuth();
 
   const handleSubmit = async () => {
     if (!emailRef.current || !passwordRef.current) {
       Alert.alert("Login", "Please fill all the fields");
       return;
     }
-    // Logic to log the user in goes here
+
+    try {
+      setIsLoading(true);
+      await signIn(emailRef.current, passwordRef.current);
+      // Navigate to home on success
+      router.replace("/(main)/home" as any);
+    } catch (error: any) {
+      Alert.alert("Login Failed", error.message || "Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

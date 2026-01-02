@@ -19,6 +19,7 @@ import Input from "@/components/Input";
 import * as Icons from "phosphor-react-native";
 import { scale, verticalScale } from "@/utils/styling";
 import Button from "@/components/Buttun";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Register() {
   const nameRef = useRef("");
@@ -26,16 +27,24 @@ export default function Register() {
   const passwordRef = useRef("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { signUp } = useAuth();
+
   const handleSubmit = async () => {
     if (!emailRef.current || !passwordRef.current || !nameRef.current) {
       Alert.alert("Sign Up", "Please fill all the fields");
       return;
     }
-    // good to go
-    router.push({
-      pathname: "/(auth)/otp-verification",
-      params: { email: emailRef.current, flow: "signup" },
-    });
+
+    try {
+      setIsLoading(true);
+      await signUp(nameRef.current, emailRef.current, passwordRef.current);
+      // Navigate to home on success
+      router.replace("/(main)/home" as any);
+    } catch (error: any) {
+      Alert.alert("Sign Up Failed", error.message || "Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
