@@ -5,6 +5,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UserProps, AuthContextProps } from "../types";
 import {
@@ -90,8 +91,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       const response = await loginAPI(email, password);
-      await saveTokens(response.accessToken, response.refreshToken);
-      setUser(response.user);
+
+      if (response.accessToken && response.refreshToken && response.user) {
+        await saveTokens(response.accessToken, response.refreshToken);
+        setUser(response.user);
+      } else {
+        throw new Error("Invalid response from server");
+      }
     } catch (error: any) {
       throw new Error(error.response?.data?.message || "Login failed");
     } finally {
@@ -103,9 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (name: string, email: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await registerAPI(name, email, password);
-      await saveTokens(response.accessToken, response.refreshToken);
-      setUser(response.user);
+      await registerAPI(name, email, password);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || "Registration failed");
     } finally {
@@ -142,14 +146,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Verify OTP
-  const verifyOTP = async (email: string, otp: string): Promise<boolean> => {
+  const verifyOTP = async (
+    email: string,
+    otp: string,
+    flow?: "signup" | "forgot-password"
+  ) => {
     try {
-      const response = await verifyOTPAPI(email, otp);
-      return response.verified;
+      setIsLoading(true);
+      const response = await verifyOTPAPI(email, otp, flow);
+
+      if (
+        response &&
+        response.accessToken &&
+        response.refreshToken &&
+        response.user
+      ) {
+        // If tokens are returned (signup flow), login the user
+        await saveTokens(response.accessToken, response.refreshToken);
+        setUser(response.user);
+      }
+
+      return true;
     } catch (error: any) {
-      throw new Error(
-        error.response?.data?.message || "OTP verification failed"
-      );
+      console.log("error", error);
+      let msg = error.response?.data?.message || "Something went wrong";
+      Alert.alert("Verification Failed", msg);
+      return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 

@@ -8,27 +8,36 @@ import {
   generateRefreshToken,
   getRefreshTokenExpiry,
 } from "../utils/jwt";
-import { generateOTP, storeOTP, verifyCachedOTP } from "../utils/otp";
+import {
+  generateOTP,
+  storeOTP,
+  verifyCachedOTP,
+  sendOTPEmail,
+  storeTempUser,
+  getTempUser,
+} from "../utils/otp";
 
-// Validation schemas
+// Validation schemas with User-Friendly Messages
 const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.email("Invalid email format"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters long"),
+  email: z.string().email("Please provide a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters long"),
 });
 
 const loginSchema = z.object({
-  email: z.email("Invalid email format"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password cannot be empty"),
 });
 
 const otpSchema = z.object({
-  email: z.email("Invalid email format"),
-  otp: z.string().length(6, "OTP must be 6 digits"),
+  email: z.string().email("Invalid email for verification"),
+  otp: z.string().length(4, "OTP must be exactly 4 digits"), // Updated to 4 digits
+  // flow is optional for backward compat but recommended
+  flow: z.enum(["signup", "forgot-password"]).optional(),
 });
 
 const emailSchema = z.object({
-  email: z.email("Invalid email format"),
+  email: z.string().email("Please enter a valid email address"),
 });
 
 /**
@@ -41,8 +50,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     // Validate input
     const validation = registerSchema.safeParse(req.body);
     if (!validation.success) {
+      const errorMsg = validation.error.issues[0].message; // Friendly first error
       res.status(400).json({
-        message: "Validation error",
+        message: errorMsg,
         errors: validation.error.issues,
       });
       return;
@@ -53,48 +63,53 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     // Check if user already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      res.status(400).json({ message: "User already exists with this email" });
-      return;
+      if (existingUser.isVerified) {
+        res
+          .status(400)
+          .json({ message: "User already exists with this email" });
+        return;
+      } else {
+        // If user exists but NOT verified, we can effectively "restart" registration
+        // by overwriting their temp data in the next steps (or deleting old unverified user if in DB)
+        // For strict cleanliness, let's delete any unverified DB record if it exists (legacy cleanup)
+        await User.deleteOne({ _id: existingUser._id });
+      }
     }
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user
-    const user = await User.create({
-      name,
+    // Secure Flow: Do NOT create user in DB yet.
+    // Store temporarily in Cache (TTL 10 mins)
+    storeTempUser(
+      email.toLowerCase(),
+      {
+        name,
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        // Any other initial fields
+      },
+      600 // 10 minutes
+    );
+
+    // Generate and store OTP
+    const otp = generateOTP();
+    storeOTP(email.toLowerCase(), otp, 600); // 10 minutes TTL
+
+    // Send OTP via email (Signup Template)
+    await sendOTPEmail(email.toLowerCase(), otp, "signup");
+
+    // Log for dev environment only
+    if (process.env.NODE_ENV === "development") {
+      console.log(`Signup OTP for ${email}: ${otp}`);
+    }
+
+    // Return success message (NO TOKENS yet)
+    res.status(200).json({
+      message: "Verification code sent to your email",
       email: email.toLowerCase(),
-      password: hashedPassword,
-      isVerified: false,
-    });
-
-    // Generate tokens
-    const accessToken = generateAccessToken(user._id.toString());
-    const refreshToken = generateRefreshToken();
-
-    // Save refresh token to database
-    await RefreshToken.create({
-      owner: user._id,
-      token: refreshToken,
-      expires: getRefreshTokenExpiry(),
-      createdIp: req.ip,
-    });
-
-    // Return user data without password
-    const userResponse = {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      isVerified: user.isVerified,
-    };
-
-    res.status(201).json({
-      message: "User registered successfully",
-      user: userResponse,
-      accessToken,
-      refreshToken,
+      // Frontend should navigate to OTP screen
     });
   } catch (error) {
     console.error("Register error:", error);
@@ -297,17 +312,20 @@ export const forgotPassword = async (
       return;
     }
 
-    // Generate and store OTP
+    // Generate and store OTP (4 digits)
     const otp = generateOTP();
-    storeOTP(email.toLowerCase(), otp, 300); // 5 minutes TTL
+    storeOTP(email.toLowerCase(), otp, 600); // 10 minutes TTL
 
-    // TODO: Send OTP via email (integrate with email service)
-    // For now, log it (REMOVE IN PRODUCTION!)
-    console.log(`OTP for ${email}: ${otp}`);
+    // Send OTP via email (Reset Template)
+    await sendOTPEmail(email.toLowerCase(), otp, "reset");
+
+    // Log for dev environment only
+    if (process.env.NODE_ENV === "development") {
+      console.log(`Reset OTP for ${email}: ${otp}`);
+    }
 
     res.status(200).json({
-      message: "If this email exists, you will receive an OTP",
-      // REMOVE IN PRODUCTION - only for testing
+      message: "If this email exists, you will receive a password reset code",
       _devOtp: process.env.NODE_ENV === "development" ? otp : undefined,
     });
   } catch (error) {
@@ -326,14 +344,15 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
     // Validate input
     const validation = otpSchema.safeParse(req.body);
     if (!validation.success) {
+      const errorMsg = validation.error.issues[0].message;
       res.status(400).json({
-        message: "Validation error",
+        message: errorMsg,
         errors: validation.error.issues,
       });
       return;
     }
 
-    const { email, otp } = validation.data;
+    const { email, otp, flow } = validation.data;
 
     // Verify OTP from cache
     const isValid = verifyCachedOTP(email.toLowerCase(), otp);
@@ -343,10 +362,74 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    res.status(200).json({
-      message: "OTP verified successfully",
-      verified: true,
-    });
+    // Handle Signup Verification
+    if (flow === "signup" || !flow) {
+      // Retrieve temp user data
+      const tempUser = getTempUser(email.toLowerCase());
+
+      if (!tempUser) {
+        res.status(400).json({
+          message: "Registration session expired. Please sign up again.",
+        });
+        return;
+      }
+
+      // Check if user was somehow created already (race condition/retry)
+      let user = await User.findOne({ email: email.toLowerCase() });
+
+      if (!user) {
+        // Create User Now (Verified = True)
+        user = await User.create({
+          name: tempUser.name,
+          email: tempUser.email,
+          password: tempUser.password,
+          isVerified: true,
+          isOnline: true,
+          lastSeen: new Date(),
+        });
+      } else {
+        // Just ensure verified is true
+        user.isVerified = true;
+        user.isOnline = true;
+        await user.save();
+      }
+
+      // Generate Tokens
+      const accessToken = generateAccessToken(user._id.toString());
+      const refreshToken = generateRefreshToken();
+
+      // Save refresh token
+      await RefreshToken.create({
+        owner: user._id,
+        token: refreshToken,
+        expires: getRefreshTokenExpiry(),
+        createdIp: req.ip,
+      });
+
+      // Response with Tokens
+      res.status(200).json({
+        message: "Email verified successfully!",
+        verified: true,
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          isVerified: user.isVerified,
+          isOnline: user.isOnline,
+        },
+        accessToken,
+        refreshToken,
+      });
+      return;
+    } else if (flow === "forgot-password") {
+      // Just return success so frontend can proceed to "Reset Password" screen
+      // (The OTP is verified and consumed)
+      res.status(200).json({
+        message: "OTP verified. You can now reset your password.",
+        verified: true,
+      });
+    }
   } catch (error) {
     console.error("Verify OTP error:", error);
     res.status(500).json({ message: "Internal server error" });

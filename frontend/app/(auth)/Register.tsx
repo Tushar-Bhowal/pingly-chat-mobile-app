@@ -38,8 +38,11 @@ export default function Register() {
     try {
       setIsLoading(true);
       await signUp(nameRef.current, emailRef.current, passwordRef.current);
-      // Navigate to home on success
-      router.replace("/(main)/home" as any);
+      // Navigate to OTP verification
+      router.push({
+        pathname: "/(auth)/otp-verification",
+        params: { email: emailRef.current, flow: "signup" },
+      });
     } catch (error: any) {
       Alert.alert("Sign Up Failed", error.message || "Something went wrong");
     } finally {

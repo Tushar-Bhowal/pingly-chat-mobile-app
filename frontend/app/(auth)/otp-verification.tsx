@@ -15,6 +15,7 @@ import BackButton from "@/components/BackButton";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { verticalScale } from "@/utils/styling";
 import Button from "@/components/Buttun";
+import { useAuth } from "@/context/AuthContext";
 
 export default function OtpVerification() {
   const [otp, setOtp] = useState(["", "", "", ""]);
@@ -42,6 +43,8 @@ export default function OtpVerification() {
     }
   };
 
+  const { verifyOTP } = useAuth();
+
   const handleSubmit = async () => {
     const otpCode = otp.join("");
     if (otpCode.length < 4) {
@@ -49,21 +52,28 @@ export default function OtpVerification() {
       return;
     }
 
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      if (flow === "forgot-password") {
-        router.push({
-          pathname: "/(auth)/reset-password",
-          params: { email },
-        });
-      } else {
-        // Signup flow
-        Alert.alert("Success", "Email verified successfully!");
-        router.push("/(auth)/Login");
+    try {
+      setIsLoading(true);
+      const currentFlow = (flow as "signup" | "forgot-password") || "signup";
+      const isVerified = await verifyOTP(email as string, otpCode, currentFlow);
+
+      if (isVerified) {
+        if (currentFlow === "forgot-password") {
+          router.push({
+            pathname: "/(auth)/reset-password",
+            params: { email },
+          });
+        } else {
+          // Signup flow
+          Alert.alert("Success", "Email verified successfully!");
+          router.replace("/(main)/home" as any);
+        }
       }
-    }, 1000);
+    } catch (error: any) {
+      Alert.alert("Verification Failed", error.message || "Invalid OTP");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

@@ -37,6 +37,19 @@ export const loginAPI = async (
   return response.data;
 };
 
+export const verifyOTPAPI = async (
+  email: string,
+  otp: string,
+  flow?: "signup" | "forgot-password"
+): Promise<AuthResponse> => {
+  const response = await api.post<AuthResponse>("/verify-otp", {
+    email,
+    otp,
+    flow,
+  });
+  return response.data;
+};
+
 export const logoutAPI = async (
   accessToken: string,
   refreshToken: string
@@ -59,14 +72,6 @@ export const forgotPasswordAPI = async (
   email: string
 ): Promise<{ message: string }> => {
   const response = await api.post("/forgot-password", { email });
-  return response.data;
-};
-
-export const verifyOTPAPI = async (
-  email: string,
-  otp: string
-): Promise<{ message: string; verified: boolean }> => {
-  const response = await api.post("/verify-otp", { email, otp });
   return response.data;
 };
 

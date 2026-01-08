@@ -60,12 +60,12 @@ export const loginRateLimiter = createRateLimiter({
 });
 
 /**
- * OTP rate limiter: 3 requests per hour
+ * OTP rate limiter: 30 requests per 15 minutes
  */
 export const otpRateLimiter = createRateLimiter({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  maxRequests: 3,
-  message: "Too many OTP requests. Please try again after 1 hour.",
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 30,
+  message: "Too many OTP requests. Please try again after 15 minutes.",
 });
 
 /**

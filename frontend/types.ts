@@ -59,15 +59,21 @@ export type AuthContextProps = {
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
-  verifyOTP: (email: string, otp: string) => Promise<boolean>;
+  verifyOTP: (
+    email: string,
+    otp: string,
+    flow?: "signup" | "forgot-password"
+  ) => Promise<boolean>;
 };
 
 // API Response types
+// API Response types
 export interface AuthResponse {
   message: string;
-  user: UserProps;
-  accessToken: string;
-  refreshToken: string;
+  user?: UserProps;
+  accessToken?: string;
+  refreshToken?: string;
+  verified?: boolean;
 }
 
 export type ScreenWrapperProps = {
