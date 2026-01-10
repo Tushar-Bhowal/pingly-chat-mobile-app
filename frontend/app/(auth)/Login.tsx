@@ -61,6 +61,7 @@ export default function Login() {
             <ScrollView
               contentContainerStyle={styles.form}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
               {/* --- Header --- */}
               <View style={{ gap: spacingY._10, marginBottom: spacingY._15 }}>
@@ -76,6 +77,10 @@ export default function Login() {
               <Input
                 placeholder="Enter your email"
                 onChangeText={(value: string) => (emailRef.current = value)}
+                textContentType="emailAddress"
+                autoComplete="email"
+                keyboardType="email-address"
+                autoCapitalize="none"
                 icon={
                   <Icons.AtIcon
                     size={verticalScale(26)}
@@ -87,6 +92,8 @@ export default function Login() {
                 placeholder="Enter your password"
                 secureTextEntry
                 onChangeText={(value: string) => (passwordRef.current = value)}
+                textContentType="none"
+                autoComplete="off"
                 icon={
                   <Icons.LockIcon
                     size={verticalScale(26)}

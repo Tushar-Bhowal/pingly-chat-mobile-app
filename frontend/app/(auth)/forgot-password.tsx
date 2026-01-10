@@ -16,27 +16,33 @@ import Input from "@/components/Input";
 import * as Icons from "phosphor-react-native";
 import { verticalScale } from "@/utils/styling";
 import Button from "@/components/Buttun";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ForgotPassword() {
   const emailRef = useRef("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { forgotPassword } = useAuth();
 
   const handleSubmit = async () => {
     if (!emailRef.current) {
       Alert.alert("Forgot Password", "Please enter your email");
       return;
     }
-    // Logic to send OTP goes here
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+
+    try {
+      setIsLoading(true);
+      await forgotPassword(emailRef.current);
+      // Navigate to OTP verification
       router.push({
         pathname: "/(auth)/otp-verification",
         params: { email: emailRef.current, flow: "forgot-password" },
       });
-    }, 1000);
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -54,6 +60,7 @@ export default function ForgotPassword() {
             <ScrollView
               contentContainerStyle={styles.form}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
               <View style={{ gap: spacingY._10, marginBottom: spacingY._15 }}>
                 <Typo size={28} fontWeight={"600"}>
@@ -67,6 +74,10 @@ export default function ForgotPassword() {
               <Input
                 placeholder="Enter your email"
                 onChangeText={(value: string) => (emailRef.current = value)}
+                textContentType="emailAddress"
+                autoComplete="email"
+                keyboardType="email-address"
+                autoCapitalize="none"
                 icon={
                   <Icons.AtIcon
                     size={verticalScale(26)}

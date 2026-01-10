@@ -65,6 +65,7 @@ export default function Register() {
             <ScrollView
               contentContainerStyle={styles.form}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
               <View style={{ gap: spacingY._10, marginBottom: spacingY._15 }}>
                 <Typo size={28} fontWeight={"600"}>
@@ -77,6 +78,8 @@ export default function Register() {
               <Input
                 placeholder="Enter your name"
                 onChangeText={(value: string) => (nameRef.current = value)}
+                textContentType="name"
+                autoComplete="name"
                 icon={
                   <Icons.UserIcon
                     size={verticalScale(26)}
@@ -87,6 +90,10 @@ export default function Register() {
               <Input
                 placeholder="Enter your email"
                 onChangeText={(value: string) => (emailRef.current = value)}
+                textContentType="emailAddress"
+                autoComplete="email"
+                keyboardType="email-address"
+                autoCapitalize="none"
                 icon={
                   <Icons.AtIcon
                     size={verticalScale(26)}
@@ -98,6 +105,8 @@ export default function Register() {
                 placeholder="Enter your password"
                 secureTextEntry
                 onChangeText={(value: string) => (passwordRef.current = value)}
+                textContentType="none"
+                autoComplete="off"
                 icon={
                   <Icons.LockIcon
                     size={verticalScale(26)}
