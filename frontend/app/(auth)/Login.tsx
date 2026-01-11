@@ -25,6 +25,7 @@ export default function Login() {
   const emailRef = useRef("");
   const passwordRef = useRef("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
   const { signIn } = useAuth();
 
@@ -44,6 +45,11 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleSignIn = async () => {
+    // TODO: Implement Google Sign In
+    Alert.alert("Coming Soon", "Google Sign In will be available soon!");
   };
 
   return (
@@ -129,8 +135,8 @@ export default function Login() {
                 </View>
 
                 <Button
-                  loading={isLoading}
-                  onPress={handleSubmit}
+                  loading={isGoogleLoading}
+                  onPress={handleGoogleSignIn}
                   style={styles.googleButtun}
                 >
                   <Image

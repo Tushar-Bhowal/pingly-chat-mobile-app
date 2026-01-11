@@ -26,6 +26,7 @@ export default function Register() {
   const emailRef = useRef("");
   const passwordRef = useRef("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
   const { signUp } = useAuth();
 
@@ -48,6 +49,11 @@ export default function Register() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleSignUp = async () => {
+    // TODO: Implement Google Sign Up
+    Alert.alert("Coming Soon", "Google Sign Up will be available soon!");
   };
 
   return (
@@ -126,8 +132,8 @@ export default function Register() {
                   <View style={styles.dividerLine} />
                 </View>
                 <Button
-                  loading={isLoading}
-                  onPress={handleSubmit}
+                  loading={isGoogleLoading}
+                  onPress={handleGoogleSignUp}
                   style={styles.googleButtun}
                 >
                   <Image
