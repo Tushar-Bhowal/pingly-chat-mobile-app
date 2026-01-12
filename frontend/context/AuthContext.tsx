@@ -17,6 +17,7 @@ import {
   forgotPasswordAPI,
   verifyOTPAPI,
 } from "../services/authServices";
+import { connectSocket, disconnectSocket } from "../socket/socket";
 
 // Storage keys
 const ACCESS_TOKEN_KEY = "access_token";
@@ -47,6 +48,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Try to get user with current token
       const userData = await getMeAPI(accessToken);
       setUser(userData);
+
+      // Connect socket after successful auth check
+      try {
+        await connectSocket();
+      } catch (socketError) {
+        console.warn("Socket connection failed:", socketError);
+      }
     } catch (error) {
       // Token might be expired, try refresh
       await refreshToken();
@@ -66,6 +74,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const userData = await getMeAPI(tokens.accessToken);
       setUser(userData);
+
+      // Connect socket after token refresh
+      try {
+        await connectSocket();
+      } catch (socketError) {
+        console.warn("Socket connection failed:", socketError);
+      }
+
       return true;
     } catch (error) {
       await clearTokens();
@@ -95,6 +111,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (response.accessToken && response.refreshToken && response.user) {
         await saveTokens(response.accessToken, response.refreshToken);
         setUser(response.user);
+
+        // Connect socket after successful login
+        try {
+          await connectSocket();
+        } catch (socketError) {
+          console.warn("Socket connection failed:", socketError);
+        }
       } else {
         throw new Error("Invalid response from server");
       }
@@ -130,6 +153,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
+      // Disconnect socket on logout
+      disconnectSocket();
+
       await clearTokens();
       setUser(null);
       setIsLoading(false);
@@ -164,6 +190,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // If tokens are returned (signup flow), login the user
         await saveTokens(response.accessToken, response.refreshToken);
         setUser(response.user);
+
+        // Connect socket after successful signup verification
+        try {
+          await connectSocket();
+        } catch (socketError) {
+          console.warn("Socket connection failed:", socketError);
+        }
       }
 
       return true;

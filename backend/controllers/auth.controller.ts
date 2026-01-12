@@ -155,8 +155,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     user.lastSeen = new Date();
     await user.save();
 
-    // Generate tokens
-    const accessToken = generateAccessToken(user._id.toString());
+    // Generate tokens (pass user object, NOT just userId)
+    const accessToken = generateAccessToken({
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      isVerified: user.isVerified,
+    });
     const refreshToken = generateRefreshToken();
 
     // Save refresh token
@@ -224,8 +230,21 @@ export const refreshTokenHandler = async (
     // Token Rotation: Delete old token
     await RefreshToken.deleteOne({ _id: storedToken._id });
 
-    // Generate new tokens
-    const newAccessToken = generateAccessToken(storedToken.owner.toString());
+    // Fetch user to get their data for the new token
+    const user = await User.findById(storedToken.owner);
+    if (!user) {
+      res.status(401).json({ message: "User not found" });
+      return;
+    }
+
+    // Generate new tokens (pass user object)
+    const newAccessToken = generateAccessToken({
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      isVerified: user.isVerified,
+    });
     const newRefreshToken = generateRefreshToken();
 
     // Save new refresh token
@@ -394,8 +413,14 @@ export const verifyOTP = async (req: Request, res: Response): Promise<void> => {
         await user.save();
       }
 
-      // Generate Tokens
-      const accessToken = generateAccessToken(user._id.toString());
+      // Generate Tokens (pass user object)
+      const accessToken = generateAccessToken({
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        isVerified: user.isVerified,
+      });
       const refreshToken = generateRefreshToken();
 
       // Save refresh token

@@ -1,6 +1,6 @@
 import { View, StatusBar, Dimensions, StyleSheet, Text } from "react-native";
 import "../global.css";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { colors } from "@/constants/theme";
 import { scale, verticalScale } from "@/utils/styling";
 import Animated, {
@@ -14,11 +14,14 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { useRouter } from "expo-router";
+import { useAuth } from "@/context/AuthContext";
 
 const { width, height } = Dimensions.get("window");
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
+  const hasNavigated = useRef(false);
 
   // Shared values for animations
   const translateY = useSharedValue(0);
@@ -28,6 +31,7 @@ export default function SplashScreen() {
   const textTranslateY = useSharedValue(20);
   const textScale = useSharedValue(0.8);
 
+  // Start animations on mount
   useEffect(() => {
     // Phase 1: Bouncing animation (0-2s)
     translateY.value = withRepeat(
@@ -78,12 +82,25 @@ export default function SplashScreen() {
         })
       );
     }, 2000);
-
-    // Navigate to next screen
-    setTimeout(() => {
-      router.replace("/(auth)/welcome");
-    }, 3500); // Total: 2s bounce + 1s scale + 0.5s buffer
   }, []);
+
+  // Navigate based on auth state after loading is complete and animation finishes
+  useEffect(() => {
+    if (hasNavigated.current) return;
+
+    const timer = setTimeout(() => {
+      if (!isLoading && !hasNavigated.current) {
+        hasNavigated.current = true;
+        if (isAuthenticated) {
+          router.replace("/(main)/home" as any);
+        } else {
+          router.replace("/(auth)/welcome" as any);
+        }
+      }
+    }, 3500); // Wait for animation to complete
+
+    return () => clearTimeout(timer);
+  }, [isLoading, isAuthenticated]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {

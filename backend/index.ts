@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import connectDB from "./config/db";
 import authRoutes from "./routes/auth.routes";
+import { initializeSocket } from "./socket/socket";
 dotenv.config();
 
 const app = express();
@@ -25,9 +26,12 @@ connectDB()
   .then(() => {
     console.log("Database connected");
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
+
+    // Initialize socket events after server is created
+    initializeSocket(server);
   })
   .catch((error) => {
     console.log("Failed to start server:", error);

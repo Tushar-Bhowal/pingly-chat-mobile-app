@@ -6,18 +6,37 @@ const JWT_REFRESH_SECRET =
   process.env.JWT_REFRESH_SECRET || "your_super_secret_refresh_key";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "15m";
 
+// User data to include in token (NO PASSWORD!)
+export interface TokenUser {
+  id: string;
+  name?: string;
+  email: string;
+  avatar?: string | null;
+  isVerified?: boolean;
+}
+
 // Payload type for access token
 export interface TokenPayload {
   userId: string;
+  user: TokenUser;
 }
 
 /**
  * Generate a short-lived access token (JWT)
- * @param userId - The user's MongoDB ObjectId as string
+ * @param user - User object with id, name, email, avatar (NO PASSWORD)
  * @returns Signed JWT access token
  */
-export const generateAccessToken = (userId: string): string => {
-  const payload: TokenPayload = { userId };
+export const generateAccessToken = (user: TokenUser): string => {
+  const payload: TokenPayload = {
+    userId: user.id,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar || null,
+      isVerified: user.isVerified || false,
+    },
+  };
   // Convert string like "15m" to seconds for jwt.sign
   const expiresInSeconds = parseExpiresIn(JWT_EXPIRES_IN);
   return jwt.sign(payload, JWT_SECRET, {
