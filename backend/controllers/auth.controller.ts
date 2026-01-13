@@ -490,3 +490,75 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+// Validation schema for profile update
+const updateProfileSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters long").optional(),
+  avatar: z.string().url("Avatar must be a valid URL").optional(),
+});
+
+/**
+ * @route PUT /api/auth/profile
+ * @desc Update user profile (name, avatar)
+ * @access Private
+ */
+export const updateProfile = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    // Validate input
+    const validation = updateProfileSchema.safeParse(req.body);
+    if (!validation.success) {
+      res.status(400).json({
+        message: validation.error.issues[0].message,
+      });
+      return;
+    }
+
+    const { name, avatar } = validation.data;
+
+    // Build update object (only include fields that were provided)
+    const updateData: { name?: string; avatar?: string } = {};
+    if (name) updateData.name = name;
+    if (avatar) updateData.avatar = avatar;
+
+    if (Object.keys(updateData).length === 0) {
+      res.status(400).json({ message: "No fields to update" });
+      return;
+    }
+
+    // Update user
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        isVerified: user.isVerified,
+      },
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

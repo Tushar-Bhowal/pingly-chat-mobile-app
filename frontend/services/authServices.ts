@@ -81,3 +81,15 @@ export const getMeAPI = async (accessToken: string): Promise<UserProps> => {
   });
   return response.data.user;
 };
+
+export const updateProfileAPI = async (
+  accessToken: string,
+  data: { name?: string; avatar?: string }
+): Promise<{ message: string; user: UserProps }> => {
+  const response = await api.put<{ message: string; user: UserProps }>(
+    "/profile",
+    data,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  return response.data;
+};

@@ -7,6 +7,7 @@ import {
   forgotPassword,
   logout,
   getMe,
+  updateProfile,
 } from "../controllers/auth.controller";
 import { authMiddleware } from "../middleware/auth";
 import { loginRateLimiter, otpRateLimiter } from "../middleware/rateLimiter";
@@ -25,5 +26,6 @@ router.post("/verify-otp", otpRateLimiter, verifyOTP);
 // Protected routes (require authentication)
 router.post("/logout", authMiddleware, logout);
 router.get("/me", authMiddleware, getMe);
+router.put("/profile", authMiddleware, updateProfile);
 
 export default router;

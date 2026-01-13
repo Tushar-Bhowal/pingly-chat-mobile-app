@@ -16,6 +16,7 @@ import {
   getMeAPI,
   forgotPasswordAPI,
   verifyOTPAPI,
+  updateProfileAPI,
 } from "../services/authServices";
 import { connectSocket, disconnectSocket } from "../socket/socket";
 
@@ -210,6 +211,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Update Profile
+  const updateProfile = async (data: {
+    name?: string;
+    avatar?: string;
+  }): Promise<boolean> => {
+    try {
+      const accessToken = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
+      if (!accessToken) {
+        Alert.alert("Error", "You must be logged in to update profile");
+        return false;
+      }
+
+      const response = await updateProfileAPI(accessToken, data);
+      // Update local user state immediately
+      setUser(response.user);
+      return true;
+    } catch (error: any) {
+      console.log("Update profile error:", error);
+      let msg = error.response?.data?.message || "Failed to update profile";
+      Alert.alert("Update Failed", msg);
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -221,6 +246,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signOut,
         forgotPassword,
         verifyOTP,
+        updateProfile,
       }}
     >
       {children}

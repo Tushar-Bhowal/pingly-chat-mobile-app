@@ -64,9 +64,9 @@ export type AuthContextProps = {
     otp: string,
     flow?: "signup" | "forgot-password"
   ) => Promise<boolean>;
+  updateProfile: (data: { name?: string; avatar?: string }) => Promise<boolean>;
 };
 
-// API Response types
 // API Response types
 export interface AuthResponse {
   message: string;
@@ -95,6 +95,19 @@ export interface ButtonProps extends TouchableOpacityProps {
   onPress?: () => void;
   loading?: boolean;
   children: React.ReactNode;
+}
+
+// Chat Card Props for chat list items
+export interface ChatCardProps {
+  id: string;
+  name: string;
+  avatar?: string;
+  lastMessage: string;
+  time: string;
+  unreadCount?: number;
+  isRead?: boolean;
+  isOnline?: boolean;
+  onPress?: () => void;
 }
 
 export type BackButtonProps = {
