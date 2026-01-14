@@ -24,6 +24,7 @@ export interface UserProps {
   email: string;
   name: string;
   avatar?: string | null;
+  bio?: string; // User bio/status message
   isOnline?: boolean; // Real-time online status
   lastSeen?: string; // ISO timestamp of last activity
   isVerified?: boolean; // Email verification status
@@ -55,6 +56,7 @@ export type AuthContextProps = {
   user: UserProps | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  getAccessToken: () => Promise<string | null>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -64,7 +66,11 @@ export type AuthContextProps = {
     otp: string,
     flow?: "signup" | "forgot-password"
   ) => Promise<boolean>;
-  updateProfile: (data: { name?: string; avatar?: string }) => Promise<boolean>;
+  updateProfile: (data: {
+    name?: string;
+    avatar?: string;
+    bio?: string;
+  }) => Promise<boolean>;
 };
 
 // API Response types
@@ -98,15 +104,19 @@ export interface ButtonProps extends TouchableOpacityProps {
 }
 
 // Chat Card Props for chat list items
+export type MessageType = "text" | "image" | "video" | "audio" | "file";
+
 export interface ChatCardProps {
   id: string;
   name: string;
   avatar?: string;
   lastMessage: string;
-  time: string;
+  messageType?: MessageType; // Type of last message (text, image, video, audio, file)
+  timestamp: number; // Unix timestamp for sorting and display
   unreadCount?: number;
   isRead?: boolean;
-  isOnline?: boolean;
+  isGroup?: boolean; // Distinguish group chats
+  memberCount?: number; // For group chats
   onPress?: () => void;
 }
 
@@ -114,6 +124,7 @@ export type BackButtonProps = {
   style?: ViewStyle;
   color?: string;
   iconSize?: number;
+  onPress?: () => void;
 };
 
 export type AvatarProps = {

@@ -26,6 +26,7 @@ const ProfileModal = () => {
   const { user, signOut, updateProfile } = useAuth();
   const router = useRouter();
   const [name, setName] = useState(user?.name || "");
+  const [bio, setBio] = useState(user?.bio || "Hey there! I'm using Pingly");
   const [avatarUri, setAvatarUri] = useState<string | null>(
     user?.avatar || null
   );
@@ -39,9 +40,11 @@ const ProfileModal = () => {
 
     // Check if anything changed
     const nameChanged = name.trim() !== user?.name;
+    const bioChanged =
+      bio.trim() !== (user?.bio || "Hey there! I'm using Pingly");
     const avatarChanged = avatarUri !== user?.avatar;
 
-    if (!nameChanged && !avatarChanged) {
+    if (!nameChanged && !bioChanged && !avatarChanged) {
       router.back();
       return;
     }
@@ -49,8 +52,9 @@ const ProfileModal = () => {
     setIsLoading(true);
 
     try {
-      const updateData: { name?: string; avatar?: string } = {};
+      const updateData: { name?: string; avatar?: string; bio?: string } = {};
       if (nameChanged) updateData.name = name.trim();
+      if (bioChanged) updateData.bio = bio.trim();
 
       // Upload avatar to Cloudinary if changed
       if (avatarChanged && avatarUri) {
@@ -152,9 +156,7 @@ const ProfileModal = () => {
         {/* Header */}
         <Header
           title="Update Profile"
-          leftIcon={
-            Platform.OS == "android" && <BackButton color={colors.black} />
-          }
+          leftIcon={<BackButton color={colors.text} />}
           style={{ marginVertical: spacingY._15 }}
         />
 
@@ -207,6 +209,33 @@ const ProfileModal = () => {
                   />
                 }
               />
+            </View>
+
+            {/* Bio Input */}
+            <View style={styles.inputGroup}>
+              <Typo
+                size={14}
+                fontWeight="500"
+                color={colors.neutral600}
+                style={styles.label}
+              >
+                Bio
+              </Typo>
+              <Input
+                placeholder="Tell us about yourself..."
+                value={bio}
+                onChangeText={setBio}
+                maxLength={150}
+                icon={
+                  <Icons.ChatCircleTextIcon
+                    size={verticalScale(20)}
+                    color={colors.neutral400}
+                  />
+                }
+              />
+              <Typo size={11} color={colors.neutral400} style={styles.hint}>
+                {bio.length}/150 characters
+              </Typo>
             </View>
 
             {/* Email Input (readonly) */}

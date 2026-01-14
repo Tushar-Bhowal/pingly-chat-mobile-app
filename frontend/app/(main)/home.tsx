@@ -5,11 +5,14 @@ import {
   FlatList,
   TextInput,
 } from "react-native";
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
 import ChatCard from "@/components/ChatCard";
 import Avatar from "@/components/Avatar";
+import Loading from "@/components/Loading";
+import FilterChips, { FilterOption } from "@/components/FilterChips";
+import EmptyState from "@/components/EmptyState";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "expo-router";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
@@ -17,58 +20,116 @@ import { scale, verticalScale } from "@/utils/styling";
 import * as Icons from "phosphor-react-native";
 import { ChatCardProps } from "@/types";
 
-// Static chat data for now
+// Static chat data for now (with timestamps for sorting)
 const STATIC_CHATS: ChatCardProps[] = [
   {
     id: "1",
     name: "Alan George",
     avatar: "https://randomuser.me/api/portraits/men/32.jpg",
     lastMessage: "That sounds like a great...",
-    time: "12.23 PM",
+    messageType: "text",
+    timestamp: Date.now() - 1000 * 60 * 5, // 5 mins ago (Today)
     unreadCount: 1,
-    isOnline: true,
+    isGroup: false,
   },
   {
     id: "2",
-    name: "Jasmine Fernandez",
-    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-    lastMessage: "ohh! that's nice.",
-    time: "12.23 PM",
-    isRead: true,
-    isOnline: false,
+    name: "Project Team",
+    avatar: "https://randomuser.me/api/portraits/lego/1.jpg",
+    lastMessage: "", // Will show "📷 Photo"
+    messageType: "image",
+    timestamp: Date.now() - 1000 * 60 * 60, // 1 hour ago (Today)
+    unreadCount: 5,
+    isGroup: true,
+    memberCount: 8,
   },
   {
     id: "3",
-    name: "Joseph Alex",
-    avatar: "https://randomuser.me/api/portraits/men/45.jpg",
-    lastMessage: "Good morning Joseph!",
-    time: "12.23 PM",
+    name: "Jasmine Fernandez",
+    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+    lastMessage: "", // Will show "🎥 Video"
+    messageType: "video",
+    timestamp: Date.now() - 1000 * 60 * 60 * 25, // 25 hours ago (Yesterday)
     isRead: true,
-    isOnline: true,
+    isGroup: false,
   },
   {
     id: "4",
-    name: "Milan Christopher",
-    avatar: "https://randomuser.me/api/portraits/men/22.jpg",
-    lastMessage: "Wonderful!",
-    time: "12.23 PM",
+    name: "Design Squad",
+    avatar: "https://randomuser.me/api/portraits/lego/2.jpg",
+    lastMessage: "Lisa: Check out the new mockups!",
+    messageType: "text",
+    timestamp: Date.now() - 1000 * 60 * 60 * 48, // 2 days ago (Day name)
     isRead: true,
-    isOnline: false,
+    isGroup: true,
+    memberCount: 5,
   },
   {
     id: "5",
     name: "Princy Xavier",
     avatar: "https://randomuser.me/api/portraits/women/65.jpg",
-    lastMessage: "Great.",
-    time: "12.23 PM",
+    lastMessage: "", // Will show "🎵 Audio"
+    messageType: "audio",
+    timestamp: Date.now() - 1000 * 60 * 60 * 24 * 10, // 10 days ago (Date)
     unreadCount: 2,
-    isOnline: true,
+    isGroup: false,
   },
 ];
 
 const Home = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [chats, setChats] = useState<ChatCardProps[]>([]);
+  const [activeFilter, setActiveFilter] = useState<FilterOption>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Simulate loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setChats(STATIC_CHATS);
+      setIsLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Calculate unread count for badge
+  const totalUnread = useMemo(
+    () => chats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0),
+    [chats]
+  );
+
+  // Filter and sort chats
+  const filteredChats = useMemo(() => {
+    let result = [...chats];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (chat) =>
+          chat.name.toLowerCase().includes(query) ||
+          chat.lastMessage.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply tab filter
+    switch (activeFilter) {
+      case "unread":
+        result = result.filter((chat) => (chat.unreadCount || 0) > 0);
+        break;
+      case "groups":
+        result = result.filter((chat) => chat.isGroup);
+        break;
+      default:
+        break;
+    }
+
+    // Sort by timestamp (most recent first)
+    result.sort((a, b) => b.timestamp - a.timestamp);
+
+    return result;
+  }, [chats, activeFilter, searchQuery]);
 
   const handleProfilePress = () => {
     router.push("/(main)/profileModal" as any);
@@ -79,9 +140,22 @@ const Home = () => {
     console.log("Opening chat:", chatId);
   };
 
+  const handleNewChat = () => {
+    router.push({
+      pathname: "/(main)/newConversationModal",
+    });
+  };
+
   const renderChatItem = ({ item }: { item: ChatCardProps }) => (
     <ChatCard {...item} onPress={() => handleChatPress(item.id)} />
   );
+
+  // Determine empty state type
+  const getEmptyStateType = () => {
+    if (activeFilter === "unread") return "no-unread";
+    if (activeFilter === "groups") return "no-groups";
+    return "no-chats";
+  };
 
   return (
     <ScreenWrapper showPattern={true} bgOpacity={0.4}>
@@ -113,7 +187,7 @@ const Home = () => {
             <Typo size={24} fontWeight="700" color={colors.text}>
               Chats
             </Typo>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={handleNewChat}>
               <Icons.PlusCircleIcon
                 size={verticalScale(28)}
                 color={colors.primary}
@@ -132,17 +206,36 @@ const Home = () => {
               style={styles.searchInput}
               placeholder="Search chats..."
               placeholderTextColor={colors.neutral400}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
             />
           </View>
 
-          {/* Chat List */}
-          <FlatList
-            data={STATIC_CHATS}
-            keyExtractor={(item) => item.id}
-            renderItem={renderChatItem}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.chatList}
+          {/* Filter Chips */}
+          <FilterChips
+            activeFilter={activeFilter}
+            onFilterChange={setActiveFilter}
+            unreadCount={totalUnread}
           />
+
+          {/* Chat List / Loading / Empty */}
+          {isLoading ? (
+            <View style={{ flex: 1 }}>
+              <Loading />
+            </View>
+          ) : filteredChats.length === 0 ? (
+            <View style={{ flex: 1 }}>
+              <EmptyState type={getEmptyStateType()} onAction={handleNewChat} />
+            </View>
+          ) : (
+            <FlatList
+              data={filteredChats}
+              keyExtractor={(item) => item.id}
+              renderItem={renderChatItem}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.chatList}
+            />
+          )}
         </View>
       </View>
     </ScreenWrapper>
@@ -162,10 +255,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacingX._20,
     paddingTop: spacingY._15,
     paddingBottom: spacingY._20,
-  },
-  profileImage: {
-    width: "100%",
-    height: "100%",
   },
   chatsSection: {
     flex: 1,
@@ -189,9 +278,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacingX._15,
     paddingVertical: spacingY._10,
     borderRadius: radius._10,
-    marginBottom: spacingY._10,
+    marginBottom: spacingY._5,
     borderWidth: 1,
-    borderColor: colors.neutral500,
+    borderColor: colors.neutral300,
   },
   searchInput: {
     flex: 1,

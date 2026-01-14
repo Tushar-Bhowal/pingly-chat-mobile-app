@@ -3,6 +3,7 @@ import React from "react";
 import { ChatCardProps } from "@/types";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
 import { scale, verticalScale } from "@/utils/styling";
+import { formatChatTime, getMessageTypeDisplay } from "@/utils/dateUtils";
 import Typo from "./Typo";
 import Avatar from "./Avatar";
 import * as Icons from "phosphor-react-native";
@@ -12,21 +13,35 @@ export default function ChatCard({
   name,
   avatar,
   lastMessage,
-  time,
+  messageType,
+  timestamp,
   unreadCount = 0,
   isRead = true,
-  isOnline = false,
+  isGroup = false,
   onPress,
 }: ChatCardProps) {
+  // Format time and message for display
+  const displayTime = formatChatTime(timestamp);
+  const displayMessage = getMessageTypeDisplay(messageType, lastMessage);
+
   return (
     <TouchableOpacity
       style={styles.container}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      {/* Avatar */}
+      {/* Avatar with group indicator */}
       <View style={styles.avatarContainer}>
-        <Avatar uri={avatar || null} size={56} />
+        <Avatar uri={avatar || null} size={56} isGroup={isGroup} />
+        {isGroup && (
+          <View style={styles.groupBadge}>
+            <Icons.UsersThreeIcon
+              size={verticalScale(12)}
+              color={colors.white}
+              weight="fill"
+            />
+          </View>
+        )}
       </View>
 
       {/* Content with border */}
@@ -43,7 +58,7 @@ export default function ChatCard({
               {name}
             </Typo>
             <Typo size={12} color={colors.neutral500}>
-              {time}
+              {displayTime}
             </Typo>
           </View>
 
@@ -54,7 +69,7 @@ export default function ChatCard({
               style={styles.message}
               textProps={{ numberOfLines: 1 }}
             >
-              {lastMessage}
+              {displayMessage}
             </Typo>
 
             {/* Unread badge or read check */}
@@ -88,7 +103,7 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: "relative",
-    paddingVertical: spacingY._12,
+    paddingVertical: spacingY._10,
   },
   avatar: {
     width: scale(56),
@@ -113,7 +128,7 @@ const styles = StyleSheet.create({
     marginLeft: spacingX._12,
   },
   contentInner: {
-    paddingVertical: spacingY._12,
+    paddingVertical: spacingY._10,
   },
   topRow: {
     flexDirection: "row",
@@ -142,5 +157,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacingX._5,
+  },
+  groupBadge: {
+    position: "absolute",
+    bottom: verticalScale(10),
+    right: -2,
+    backgroundColor: colors.primaryDark,
+    width: scale(22),
+    height: scale(22),
+    borderRadius: scale(11),
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.white,
   },
 });

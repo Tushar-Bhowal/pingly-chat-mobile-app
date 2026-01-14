@@ -495,11 +495,12 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 const updateProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters long").optional(),
   avatar: z.string().url("Avatar must be a valid URL").optional(),
+  bio: z.string().max(150, "Bio must be 150 characters or less").optional(),
 });
 
 /**
  * @route PUT /api/auth/profile
- * @desc Update user profile (name, avatar)
+ * @desc Update user profile (name, avatar, bio)
  * @access Private
  */
 export const updateProfile = async (
@@ -523,12 +524,13 @@ export const updateProfile = async (
       return;
     }
 
-    const { name, avatar } = validation.data;
+    const { name, avatar, bio } = validation.data;
 
     // Build update object (only include fields that were provided)
-    const updateData: { name?: string; avatar?: string } = {};
+    const updateData: { name?: string; avatar?: string; bio?: string } = {};
     if (name) updateData.name = name;
     if (avatar) updateData.avatar = avatar;
+    if (bio !== undefined) updateData.bio = bio;
 
     if (Object.keys(updateData).length === 0) {
       res.status(400).json({ message: "No fields to update" });
@@ -554,6 +556,7 @@ export const updateProfile = async (
         name: user.name,
         email: user.email,
         avatar: user.avatar,
+        bio: user.bio,
         isVerified: user.isVerified,
       },
     });

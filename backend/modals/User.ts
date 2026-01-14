@@ -29,6 +29,11 @@ const UserSchema = new Schema<UserProps>(
       default:
         "https://icon-library.com/images/anonymous-avatar-icon/anonymous-avatar-icon-25.jpg",
     },
+    bio: {
+      type: String,
+      default: "Hey there! I'm using Pingly",
+      maxlength: 150,
+    },
     // Online presence
     isOnline: {
       type: Boolean,

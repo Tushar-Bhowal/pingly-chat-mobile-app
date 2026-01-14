@@ -235,12 +235,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Get access token from storage
+  const getAccessToken = async (): Promise<string | null> => {
+    return await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isLoading,
         isAuthenticated: !!user,
+        getAccessToken,
         signIn,
         signUp,
         signOut,

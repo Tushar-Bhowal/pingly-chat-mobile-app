@@ -6,6 +6,7 @@ export interface UserProps extends Document {
   password: string;
   name?: string;
   avatar?: string;
+  bio?: string; // User bio/status message
 
   // Online presence tracking
   isOnline?: boolean; // NEW: Real-time online status
@@ -37,18 +38,23 @@ export interface ConversationProps extends Document {
   _id: Types.ObjectId;
   type: "direct" | "group";
   name?: string; // Required for group chats
+  description?: string; // Group description
   participants: Types.ObjectId[]; // References to User._id
-  lastMessage?: Types.ObjectId; // NEW: Reference to Message._id
-  createdBy?: Types.ObjectId; // NEW: Reference to User._id who created the conversation
+  admins?: Types.ObjectId[]; // Group admins (can add/remove members)
+  lastMessage?: Types.ObjectId; // Reference to Message._id
+  lastMessageAt?: Date; // For sorting conversations
+  createdBy?: Types.ObjectId; // Reference to User._id who created the conversation
   avatar?: string; // Group avatar URL
 
   // Unread message tracking per participant
-  unreadCount?: Map<string, number>; // NEW: { userId: unreadCount }
-  lastReadAt?: Map<string, Date>; // NEW: { userId: lastReadTimestamp }
+  unreadCount?: Map<string, number>; // { userId: unreadCount }
+  lastReadAt?: Map<string, Date>; // { userId: lastReadTimestamp }
 
-  // Typing indicator state (not persisted, handled via Socket.IO)
-  // But you may want to store who's currently typing for reconnection scenarios
-  typingUsers?: Types.ObjectId[]; // NEW: Array of user IDs currently typing
+  // Typing indicator state
+  typingUsers?: Types.ObjectId[]; // Array of user IDs currently typing
+
+  // Group settings
+  isMuted?: Map<string, boolean>; // { userId: isMuted } - mute notifications
 
   createdAt: Date;
   updatedAt: Date;

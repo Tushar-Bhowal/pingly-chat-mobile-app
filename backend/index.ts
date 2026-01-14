@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import connectDB from "./config/db";
 import authRoutes from "./routes/auth.routes";
+import userRoutes from "./routes/user.routes";
 import { initializeSocket } from "./socket/socket";
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 
 const PORT = process.env.PORT || 3000;
 
