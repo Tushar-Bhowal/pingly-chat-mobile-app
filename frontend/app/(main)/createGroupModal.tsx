@@ -21,10 +21,12 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { getUsersAPI } from "@/services/userService";
+import { createConversationAPI } from "@/services/conversationService";
+import { uploadToCloudinary } from "@/services/imageService";
 
 const CreateGroupModal = () => {
   const router = useRouter();
-  const { getAccessToken } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const [users, setUsers] = useState<ContactItemProps[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -105,29 +107,62 @@ const CreateGroupModal = () => {
       return;
     }
 
-    if (selectedIds.length < 2) {
+    if (selectedIds.length < 1) {
       Alert.alert(
         "Select Members",
-        "Please select at least 2 members for a group."
+        "Please select at least 1 member for a group."
       );
       return;
     }
 
     setIsCreating(true);
-    // TODO: Create group API call
-    console.log("Creating group:", {
-      name: groupName,
-      description: groupDescription,
-      avatar: groupAvatar,
-      members: selectedIds,
-    });
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        Alert.alert("Error", "Not authenticated");
+        return;
+      }
 
-    setTimeout(() => {
+      // Upload avatar to Cloudinary if selected
+      let avatarUrl = undefined;
+      if (groupAvatar && groupAvatar.startsWith("file://")) {
+        avatarUrl = await uploadToCloudinary(groupAvatar, "group-avatars");
+      } else if (groupAvatar) {
+        avatarUrl = groupAvatar;
+      }
+
+      // Create group conversation
+      const { conversation, isNew } = await createConversationAPI(token, {
+        type: "group",
+        participants: selectedIds,
+        name: groupName.trim(),
+        description: groupDescription.trim() || undefined,
+        avatar: avatarUrl,
+      });
+
+      console.log("Group created:", conversation._id, "isNew:", isNew);
+
+      // Navigate to conversation
+      router.dismissAll();
+      router.push({
+        pathname: "/(main)/conversation",
+        params: {
+          conversationId: conversation._id,
+          name: conversation.name || groupName.trim(),
+          avatar: avatarUrl || "",
+          isGroup: "true",
+          participantCount: String(selectedIds.length + 1),
+        },
+      } as any);
+    } catch (error: any) {
+      console.error("Create group error:", error);
+      Alert.alert(
+        "Error",
+        error.response?.data?.message || "Failed to create group"
+      );
+    } finally {
       setIsCreating(false);
-      Alert.alert("Success", "Group created successfully!", [
-        { text: "OK", onPress: () => router.dismissAll() },
-      ]);
-    }, 1000);
+    }
   };
 
   return (
@@ -213,43 +248,49 @@ const CreateGroupModal = () => {
             />
           </View>
 
-          {/* Selected Members Chips */}
-          {selectedContacts.length > 0 && (
-            <View style={styles.selectedSection}>
-              <Typo size={14} fontWeight="600" color={colors.neutral600}>
-                Selected ({selectedContacts.length})
-              </Typo>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.chipsContainer}
-                contentContainerStyle={styles.chipsContent}
-              >
-                {selectedContacts.map((contact) => (
-                  <View key={contact.id} style={styles.chip}>
-                    <Avatar uri={contact.avatar || null} size={28} />
-                    <Typo
-                      size={13}
-                      color={colors.text}
-                      style={styles.chipName}
-                      textProps={{ numberOfLines: 1 }}
-                    >
-                      {contact.name.split(" ")[0]}
-                    </Typo>
-                    <TouchableOpacity
-                      onPress={() => handleRemoveMember(contact.id)}
-                      style={styles.chipRemove}
-                    >
-                      <Icons.XIcon
-                        size={verticalScale(14)}
-                        color={colors.neutral500}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-          )}
+          {/* Selected Members Chips - Always show with admin */}
+          <View style={styles.selectedSection}>
+            <Typo size={14} fontWeight="600" color={colors.neutral600}>
+              Members ({selectedContacts.length + 1})
+            </Typo>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipsContainer}
+              contentContainerStyle={styles.chipsContent}
+            >
+              {/* Admin (You) - always first */}
+              <View style={styles.chip}>
+                <Avatar uri={user?.avatar || null} size={28} />
+                <Typo size={13} color={colors.text} style={styles.chipName}>
+                  You
+                </Typo>
+              </View>
+              {/* Other selected members */}
+              {selectedContacts.map((contact) => (
+                <View key={contact.id} style={styles.chip}>
+                  <Avatar uri={contact.avatar || null} size={28} />
+                  <Typo
+                    size={13}
+                    color={colors.text}
+                    style={styles.chipName}
+                    textProps={{ numberOfLines: 1 }}
+                  >
+                    {contact.name.split(" ")[0]}
+                  </Typo>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveMember(contact.id)}
+                    style={styles.chipRemove}
+                  >
+                    <Icons.XIcon
+                      size={verticalScale(14)}
+                      color={colors.neutral500}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
 
           {/* Search Bar */}
           <View style={styles.sectionHeader}>
@@ -400,6 +441,11 @@ const styles = StyleSheet.create({
     paddingLeft: spacingX._5,
     paddingRight: spacingX._10,
     marginRight: spacingX._7,
+  },
+  adminChip: {
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
   chipName: {
     marginLeft: spacingX._7,

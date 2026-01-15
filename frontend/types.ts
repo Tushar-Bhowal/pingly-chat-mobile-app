@@ -175,6 +175,11 @@ export type ConversationProps = {
   unreadCount?: number; // Number of unread messages per conversation
   isTyping?: boolean; // Is someone typing in this conversation
   typingUsers?: string[]; // Array of user IDs currently typing
+  createdBy?: {
+    _id: string;
+    name: string;
+    avatar?: string;
+  }; // Who created this conversation (for groups)
   createdAt: string;
   updatedAt: string;
 };

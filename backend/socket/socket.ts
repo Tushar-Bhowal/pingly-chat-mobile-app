@@ -4,8 +4,17 @@ import { Server as SocketIOServer, Socket } from "socket.io";
 import { registerUserEvents } from "./userEvents";
 dotenv.config();
 
+let io: SocketIOServer;
+
+export function getIO(): SocketIOServer {
+  if (!io) {
+    throw new Error("Socket.io not initialized");
+  }
+  return io;
+}
+
 export function initializeSocket(server: any): SocketIOServer {
-  const io = new SocketIOServer(server, {
+  io = new SocketIOServer(server, {
     cors: {
       origin: "*", // allow all origins
     },
@@ -34,14 +43,35 @@ export function initializeSocket(server: any): SocketIOServer {
   });
 
   // when socket connect, register events
-  io.on("connection", (socket: Socket) => {
+  io.on("connection", async (socket: Socket) => {
     const userId = socket.data.userId;
     const userName = socket.data.user?.name || "Unknown";
     console.log("User connected:", userId, "-", userName);
-    //register events
+
+    // Join user's own room (for direct notifications)
+    socket.join(userId);
+
+    // Join all conversation rooms the user is part of
+    try {
+      const Conversation = (await import("../modals/Conversation")).default;
+      const conversations = await Conversation.find({
+        participants: userId,
+      }).select("_id");
+
+      conversations.forEach((conversation) => {
+        socket.join(conversation._id.toString());
+      });
+      console.log(
+        `User ${userName} joined ${conversations.length} conversation rooms`
+      );
+    } catch (error: any) {
+      console.log("Error joining conversations:", error.message);
+    }
+
+    // Register events
     registerUserEvents(io, socket);
+
     socket.on("disconnect", () => {
-      // user logs out
       console.log("User disconnected:", userId, "-", userName);
     });
   });

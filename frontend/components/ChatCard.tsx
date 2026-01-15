@@ -79,7 +79,7 @@ export default function ChatCard({
                   {unreadCount}
                 </Typo>
               </View>
-            ) : isRead ? (
+            ) : lastMessage && isRead ? (
               <Icons.ChecksIcon
                 size={verticalScale(18)}
                 color={colors.primary}

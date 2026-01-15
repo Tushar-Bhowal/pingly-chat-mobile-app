@@ -66,9 +66,19 @@ const NewConversationModal = () => {
   };
 
   const handleContactPress = (contact: ContactItemProps) => {
-    // TODO: Create or open direct conversation
-    console.log("Starting chat with:", contact.name);
-    router.back();
+    // Navigate to conversation with this contact
+    router.dismissAll();
+    router.push({
+      pathname: "/(main)/conversation",
+      params: {
+        conversationId: "", // Will be created when first message is sent
+        name: contact.name,
+        avatar: contact.avatar || "",
+        isGroup: "false",
+        participantCount: "2",
+        participantId: contact.id, // For creating conversation later
+      },
+    } as any);
   };
 
   const renderContact = ({ item }: { item: ContactItemProps }) => (

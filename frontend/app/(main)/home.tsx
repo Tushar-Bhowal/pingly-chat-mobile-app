@@ -5,7 +5,7 @@ import {
   FlatList,
   TextInput,
 } from "react-native";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
 import ChatCard from "@/components/ChatCard";
@@ -14,84 +14,115 @@ import Loading from "@/components/Loading";
 import FilterChips, { FilterOption } from "@/components/FilterChips";
 import EmptyState from "@/components/EmptyState";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
 import { scale, verticalScale } from "@/utils/styling";
 import * as Icons from "phosphor-react-native";
-import { ChatCardProps } from "@/types";
-
-// Static chat data for now (with timestamps for sorting)
-const STATIC_CHATS: ChatCardProps[] = [
-  {
-    id: "1",
-    name: "Alan George",
-    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-    lastMessage: "That sounds like a great...",
-    messageType: "text",
-    timestamp: Date.now() - 1000 * 60 * 5, // 5 mins ago (Today)
-    unreadCount: 1,
-    isGroup: false,
-  },
-  {
-    id: "2",
-    name: "Project Team",
-    avatar: "https://randomuser.me/api/portraits/lego/1.jpg",
-    lastMessage: "", // Will show "📷 Photo"
-    messageType: "image",
-    timestamp: Date.now() - 1000 * 60 * 60, // 1 hour ago (Today)
-    unreadCount: 5,
-    isGroup: true,
-    memberCount: 8,
-  },
-  {
-    id: "3",
-    name: "Jasmine Fernandez",
-    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-    lastMessage: "", // Will show "🎥 Video"
-    messageType: "video",
-    timestamp: Date.now() - 1000 * 60 * 60 * 25, // 25 hours ago (Yesterday)
-    isRead: true,
-    isGroup: false,
-  },
-  {
-    id: "4",
-    name: "Design Squad",
-    avatar: "https://randomuser.me/api/portraits/lego/2.jpg",
-    lastMessage: "Lisa: Check out the new mockups!",
-    messageType: "text",
-    timestamp: Date.now() - 1000 * 60 * 60 * 48, // 2 days ago (Day name)
-    isRead: true,
-    isGroup: true,
-    memberCount: 5,
-  },
-  {
-    id: "5",
-    name: "Princy Xavier",
-    avatar: "https://randomuser.me/api/portraits/women/65.jpg",
-    lastMessage: "", // Will show "🎵 Audio"
-    messageType: "audio",
-    timestamp: Date.now() - 1000 * 60 * 60 * 24 * 10, // 10 days ago (Date)
-    unreadCount: 2,
-    isGroup: false,
-  },
-];
+import { ChatCardProps, ConversationProps } from "@/types";
+import { getConversationsAPI } from "@/services/conversationService";
+import { getSocket } from "@/socket/socket";
 
 const Home = () => {
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [chats, setChats] = useState<ChatCardProps[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterOption>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Simulate loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setChats(STATIC_CHATS);
+  // Convert conversation to ChatCardProps
+  const mapConversationToChat = useCallback(
+    (conv: ConversationProps): ChatCardProps => {
+      // For direct chat, get the other participant
+      const otherParticipant =
+        conv.type === "direct"
+          ? conv.participants.find((p) => p._id !== user?._id)
+          : null;
+      // For groups without messages, show creation message
+      const getLastMessage = () => {
+        if (conv.lastMessage?.content) {
+          return conv.lastMessage.content;
+        }
+        if (conv.type === "group") {
+          // Check if current user created the group
+          const isCreator = conv.createdBy?._id === user?._id;
+          if (isCreator) {
+            return `You created group "${conv.name}"`;
+          } else {
+            return `You were added to this group`;
+          }
+        }
+        return "";
+      };
+
+      return {
+        id: conv._id,
+        name:
+          conv.type === "group"
+            ? conv.name || "Group"
+            : otherParticipant?.name || "Unknown",
+        avatar:
+          conv.type === "group"
+            ? conv.avatar || undefined
+            : otherParticipant?.avatar || undefined,
+        lastMessage: getLastMessage(),
+        messageType: conv.lastMessage?.type || "text",
+        timestamp: conv.lastMessage?.createdAt
+          ? new Date(conv.lastMessage.createdAt).getTime()
+          : Date.now(),
+        unreadCount: conv.unreadCount || 0,
+        isGroup: conv.type === "group",
+        memberCount:
+          conv.type === "group" ? conv.participants.length : undefined,
+        isRead: conv.lastMessage ? conv.lastMessage.isRead : false,
+      };
+    },
+    [user?._id]
+  );
+
+  // Fetch conversations
+  const fetchConversations = useCallback(async () => {
+    const token = await getAccessToken();
+    if (!token) {
       setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+      return;
+    }
+
+    try {
+      const { conversations } = await getConversationsAPI(token);
+      const mappedChats = conversations.map(mapConversationToChat);
+      setChats(mappedChats);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getAccessToken, mapConversationToChat]);
+
+  // Fetch on mount and when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchConversations();
+    }, [fetchConversations])
+  );
+
+  // Listen for new conversations via socket
+  useEffect(() => {
+    const handleNewConversation = (data: {
+      conversation: ConversationProps;
+    }) => {
+      console.log("New conversation received:", data.conversation._id);
+      const newChat = mapConversationToChat(data.conversation);
+      setChats((prev) => [newChat, ...prev]);
+    };
+
+    const socket = getSocket();
+    socket?.on("conversationCreated", handleNewConversation);
+
+    return () => {
+      socket?.off("conversationCreated", handleNewConversation);
+    };
+  }, [mapConversationToChat]);
 
   // Calculate unread count for badge
   const totalUnread = useMemo(
@@ -135,9 +166,17 @@ const Home = () => {
     router.push("/(main)/profileModal" as any);
   };
 
-  const handleChatPress = (chatId: string) => {
-    // Navigate to chat screen (to be implemented)
-    console.log("Opening chat:", chatId);
+  const handleChatPress = (chat: ChatCardProps) => {
+    router.push({
+      pathname: "/(main)/conversation",
+      params: {
+        conversationId: chat.id,
+        name: chat.name,
+        avatar: chat.avatar || "",
+        isGroup: chat.isGroup ? "true" : "false",
+        participantCount: chat.memberCount ? String(chat.memberCount) : "2",
+      },
+    } as any);
   };
 
   const handleNewChat = () => {
@@ -147,7 +186,7 @@ const Home = () => {
   };
 
   const renderChatItem = ({ item }: { item: ChatCardProps }) => (
-    <ChatCard {...item} onPress={() => handleChatPress(item.id)} />
+    <ChatCard {...item} onPress={() => handleChatPress(item)} />
   );
 
   // Determine empty state type
