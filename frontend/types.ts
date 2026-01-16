@@ -104,7 +104,13 @@ export interface ButtonProps extends TouchableOpacityProps {
 }
 
 // Chat Card Props for chat list items
-export type MessageType = "text" | "image" | "video" | "audio" | "file";
+export type MessageType =
+  | "text"
+  | "image"
+  | "video"
+  | "audio"
+  | "file"
+  | "system";
 
 export interface ChatCardProps {
   id: string;
@@ -185,21 +191,39 @@ export type ConversationProps = {
 };
 
 // Added read status and delivery tracking
+
 export type MessageProps = {
   id: string;
+  conversationId?: string;
   sender: {
     id: string;
     name: string;
     avatar: string | null;
   };
   content: string;
-  attachement?: string | null;
+  type: MessageType;
+  attachment?: string | null; // URL for media
+  attachmentMetadata?: {
+    fileName?: string;
+    fileSize?: number;
+    duration?: number; // For audio/video in seconds
+    mimeType?: string;
+    thumbnail?: string; // For video thumbnails
+  };
   isMe?: boolean;
   createdAt: string;
-  isRead?: boolean; // Has recipient read this message
-  readBy?: string[]; // For group chats - array of user IDs who read
-  deliveredAt?: string; // When message was delivered
-  readAt?: string; //  When message was read
+  isRead?: boolean;
+  readBy?: string[];
+  deliveredTo?: string[];
+  deliveredAt?: string;
+  readAt?: string;
+  isEdited?: boolean;
+  isDeleted?: boolean;
+  replyTo?: {
+    id: string;
+    content: string;
+    senderName: string;
+  } | null;
 };
 
 // For OTP verification flow
