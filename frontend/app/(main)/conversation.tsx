@@ -14,6 +14,8 @@ import Avatar from "@/components/Avatar";
 import Typo from "@/components/Typo";
 import BackButton from "@/components/BackButton";
 import MessageBubble from "@/components/MessageBubble";
+import MessageActionModal from "@/components/MessageActionModal";
+import AttachmentMenu from "@/components/AttachmentMenu";
 import { MessageProps } from "@/types";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
 import { verticalScale, scale } from "@/utils/styling";
@@ -109,6 +111,11 @@ const Conversation = () => {
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<MessageProps[]>(DUMMY_MESSAGES);
+  const [selectedMessage, setSelectedMessage] = useState<MessageProps | null>(
+    null
+  );
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
 
   const isGroup = params.isGroup === "true";
   const participantCount = params.participantCount
@@ -133,8 +140,31 @@ const Conversation = () => {
     setMessage("");
   };
 
+  const handleLongPress = (msg: MessageProps) => {
+    if (msg.type === "system") return;
+    setSelectedMessage(msg);
+    setShowActionModal(true);
+  };
+
+  const handleEdit = (messageId: string, newContent: string) => {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId ? { ...m, content: newContent, isEdited: true } : m
+      )
+    );
+  };
+
+  const handleDelete = (messageId: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+  };
+
   const renderMessage = ({ item }: { item: MessageProps }) => (
-    <MessageBubble message={item} isGroup={isGroup} showAvatar={!item.isMe} />
+    <MessageBubble
+      message={item}
+      isGroup={isGroup}
+      showAvatar={!item.isMe}
+      onLongPress={handleLongPress}
+    />
   );
 
   // Empty state component
@@ -157,13 +187,12 @@ const Conversation = () => {
   );
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper showPattern={true}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={verticalScale(0)}
       >
-        {/* Header - Primary background, white text */}
         <View style={styles.header}>
           <BackButton color={colors.white} />
 
@@ -179,7 +208,7 @@ const Conversation = () => {
                 {params.name || "Chat"}
               </Typo>
               {isGroup && participantCount > 0 && (
-                <Typo size={12} color="rgba(255,255,255,0.7)">
+                <Typo size={12} color="white">
                   {participantCount} members
                 </Typo>
               )}
@@ -195,24 +224,44 @@ const Conversation = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Messages list */}
         {hasMessages ? (
           <FlatList
-            data={messages}
+            data={[...messages].reverse()}
             keyExtractor={(item) => item.id}
             renderItem={renderMessage}
             contentContainerStyle={styles.messagesList}
             showsVerticalScrollIndicator={false}
+            inverted
           />
         ) : (
           <EmptyState />
         )}
 
-        {/* Input area */}
+        {/* Attachment Menu */}
+        <AttachmentMenu
+          visible={showAttachmentMenu}
+          onClose={() => setShowAttachmentMenu(false)}
+          onSelectImage={() => {
+            // TODO: Implement image picker
+            console.log("Select image");
+          }}
+          onSelectVideo={() => {
+            // TODO: Implement video picker
+            console.log("Select video");
+          }}
+          onSelectDocument={() => {
+            // TODO: Implement document picker
+            console.log("Select document");
+          }}
+        />
+
         <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.attachButton}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => setShowAttachmentMenu(!showAttachmentMenu)}
+          >
             <Icons.PlusCircleIcon
-              size={verticalScale(28)}
+              size={verticalScale(26)}
               color={colors.primary}
               weight="fill"
             />
@@ -228,31 +277,37 @@ const Conversation = () => {
               multiline
               maxLength={1000}
             />
-            <TouchableOpacity style={styles.emojiButton}>
+            <TouchableOpacity style={styles.emojiButtonInside}>
               <Icons.SmileyIcon
-                size={verticalScale(24)}
+                size={verticalScale(22)}
                 color={colors.neutral400}
               />
             </TouchableOpacity>
           </View>
 
+          {/* Camera - only show when not typing */}
+          {!message.trim() && (
+            <TouchableOpacity style={styles.iconButton}>
+              <Icons.CameraIcon
+                size={verticalScale(24)}
+                color={colors.neutral400}
+              />
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
-            style={[
-              styles.sendButton,
-              !message.trim() && styles.sendButtonDisabled,
-            ]}
-            onPress={handleSend}
-            disabled={!message.trim()}
+            style={styles.sendButton}
+            onPress={message.trim() ? handleSend : undefined}
           >
             {message.trim() ? (
               <Icons.PaperPlaneTiltIcon
-                size={verticalScale(22)}
+                size={verticalScale(20)}
                 color={colors.white}
                 weight="fill"
               />
             ) : (
               <Icons.MicrophoneIcon
-                size={verticalScale(22)}
+                size={verticalScale(20)}
                 color={colors.white}
                 weight="fill"
               />
@@ -260,6 +315,14 @@ const Conversation = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <MessageActionModal
+        visible={showActionModal}
+        message={selectedMessage}
+        onClose={() => setShowActionModal(false)}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
     </ScreenWrapper>
   );
 };
@@ -270,13 +333,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  // Header styles - primary background
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: spacingX._10,
-    paddingVertical: spacingY._12,
-    backgroundColor: colors.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral800,
+    paddingBottom: spacingY._10,
   },
   headerInfo: {
     flex: 1,
@@ -291,12 +354,10 @@ const styles = StyleSheet.create({
   headerButton: {
     padding: spacingX._7,
   },
-  // Messages list
   messagesList: {
     paddingVertical: spacingY._10,
     flexGrow: 1,
   },
-  // Empty state
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
@@ -311,53 +372,58 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: spacingY._7,
   },
-  // Input area
   inputContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
     paddingHorizontal: spacingX._10,
     paddingVertical: spacingY._10,
-    backgroundColor: colors.white,
-    borderTopWidth: 1,
-    borderTopColor: colors.neutral200,
     gap: spacingX._7,
+    borderTopWidth: 1,
+    borderTopColor: colors.neutral800,
   },
-  attachButton: {
-    padding: spacingX._5,
-    marginBottom: spacingY._5,
+  iconButton: {
+    width: verticalScale(40),
+    height: verticalScale(40),
+    justifyContent: "center",
+    alignItems: "center",
   },
   textInputWrapper: {
     flex: 1,
     flexDirection: "row",
-    alignItems: "flex-end",
-    backgroundColor: colors.neutral100,
-    borderRadius: radius._20,
-    paddingHorizontal: spacingX._15,
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: radius._10,
+    borderWidth: 1,
+    borderColor: colors.neutral600,
+    paddingHorizontal: spacingX._12,
     paddingVertical: spacingY._7,
     minHeight: verticalScale(44),
     maxHeight: verticalScale(120),
   },
   textInput: {
     flex: 1,
-    fontSize: verticalScale(15),
-    color: colors.text,
+    fontSize: verticalScale(14),
+    color: colors.white,
     paddingTop: 0,
     paddingBottom: 0,
+    textAlignVertical: "center",
     maxHeight: verticalScale(100),
   },
-  emojiButton: {
+  emojiButtonInside: {
     padding: spacingX._5,
-    marginLeft: spacingX._5,
+    marginLeft: spacingX._7,
+    justifyContent: "center",
   },
   sendButton: {
     backgroundColor: colors.primary,
-    borderRadius: verticalScale(22),
-    width: verticalScale(44),
-    height: verticalScale(44),
+    borderRadius: verticalScale(20),
+    width: verticalScale(40),
+    height: verticalScale(40),
     justifyContent: "center",
     alignItems: "center",
   },
   sendButtonDisabled: {
-    backgroundColor: colors.neutral400,
+    backgroundColor: colors.primary,
+    opacity: 0.8,
   },
 });

@@ -1,4 +1,10 @@
-import { StyleSheet, View, TouchableOpacity, Image } from "react-native";
+import {
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  Image,
+  TextInput,
+} from "react-native";
 import React from "react";
 import { MessageProps } from "@/types";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
@@ -10,13 +16,25 @@ import * as Icons from "phosphor-react-native";
 interface MessageBubbleProps {
   message: MessageProps;
   isGroup?: boolean;
-  showAvatar?: boolean; // For group chats, show avatar for other users
+  showAvatar?: boolean;
+  onLongPress?: (message: MessageProps) => void;
+  isEditing?: boolean;
+  editText?: string;
+  onChangeEditText?: (text: string) => void;
+  onSaveEdit?: () => void;
+  onCancelEdit?: () => void;
 }
 
 export default function MessageBubble({
   message,
   isGroup = false,
   showAvatar = true,
+  onLongPress,
+  isEditing = false,
+  editText = "",
+  onChangeEditText,
+  onSaveEdit,
+  onCancelEdit,
 }: MessageBubbleProps) {
   const isMe = message.isMe;
   const isSystem = message.type === "system";
@@ -36,7 +54,7 @@ export default function MessageBubble({
     return (
       <View style={styles.systemContainer}>
         <View style={styles.systemBubble}>
-          <Typo size={12} color={colors.neutral500} style={styles.systemText}>
+          <Typo size={12} color={colors.neutral400}>
             {message.content}
           </Typo>
         </View>
@@ -84,24 +102,27 @@ export default function MessageBubble({
       case "audio":
         return (
           <View style={styles.audioContainer}>
-            <TouchableOpacity style={styles.audioPlayButton}>
+            <TouchableOpacity
+              style={[styles.audioPlayButton, isMe && styles.audioPlayButtonMe]}
+            >
               <Icons.PlayIcon
-                size={verticalScale(20)}
-                color={isMe ? colors.white : colors.primary}
+                size={verticalScale(18)}
+                color={isMe ? colors.primary : colors.neutral800}
                 weight="fill"
               />
             </TouchableOpacity>
             <View style={styles.audioWaveform}>
               {/* Simulated waveform bars */}
-              {[...Array(20)].map((_, i) => (
+              {[...Array(18)].map((_, i) => (
                 <View
                   key={i}
                   style={[
                     styles.waveformBar,
                     {
-                      height: verticalScale(4 + Math.random() * 16),
-                      backgroundColor: isMe ? colors.white : colors.primary,
-                      opacity: 0.6 + Math.random() * 0.4,
+                      height: verticalScale(5 + Math.random() * 14),
+                      backgroundColor: isMe
+                        ? colors.primary
+                        : colors.neutral700,
                     },
                   ]}
                 />
@@ -109,7 +130,7 @@ export default function MessageBubble({
             </View>
             <Typo
               size={11}
-              color={isMe ? colors.white : colors.neutral500}
+              color={isMe ? colors.neutral600 : colors.neutral500}
               style={styles.audioDuration}
             >
               {message.attachmentMetadata?.duration
@@ -125,22 +146,19 @@ export default function MessageBubble({
         return (
           <TouchableOpacity style={styles.fileContainer} activeOpacity={0.7}>
             <Icons.FileIcon
-              size={verticalScale(32)}
-              color={isMe ? colors.white : colors.primary}
+              size={verticalScale(28)}
+              color={isMe ? colors.primary : colors.neutral700}
             />
             <View style={styles.fileInfo}>
               <Typo
                 size={13}
                 fontWeight="600"
-                color={isMe ? colors.white : colors.text}
+                color={colors.neutral800}
                 textProps={{ numberOfLines: 1 }}
               >
                 {message.attachmentMetadata?.fileName || "File"}
               </Typo>
-              <Typo
-                size={11}
-                color={isMe ? "rgba(255,255,255,0.7)" : colors.neutral500}
-              >
+              <Typo size={11} color={colors.neutral500}>
                 {message.attachmentMetadata?.fileSize
                   ? `${(message.attachmentMetadata.fileSize / 1024).toFixed(1)} KB`
                   : ""}
@@ -150,10 +168,43 @@ export default function MessageBubble({
         );
 
       default: // text
+        if (isEditing && isMe) {
+          return (
+            <View style={styles.editingContainer}>
+              <TextInput
+                style={styles.editInput}
+                value={editText}
+                onChangeText={onChangeEditText}
+                multiline
+                autoFocus
+                placeholder="Edit message..."
+                placeholderTextColor={colors.neutral400}
+              />
+              <View style={styles.editButtons}>
+                <TouchableOpacity
+                  onPress={onCancelEdit}
+                  style={styles.cancelBtn}
+                >
+                  <Icons.XIcon
+                    size={verticalScale(18)}
+                    color={colors.neutral400}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={onSaveEdit} style={styles.saveBtn}>
+                  <Icons.CheckIcon
+                    size={verticalScale(18)}
+                    color={colors.white}
+                    weight="bold"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        }
         return (
           <Typo
             size={14}
-            color={isMe ? colors.white : colors.text}
+            color={isMe ? colors.neutral800 : colors.white}
             style={styles.textContent}
           >
             {message.content}
@@ -171,11 +222,23 @@ export default function MessageBubble({
     >
       {/* Avatar for group (left side, only for others) */}
       {isGroup && !isMe && showAvatar && (
-        <Avatar uri={message.sender.avatar} size={32} />
+        <Avatar uri={message.sender.avatar} size={36} />
       )}
 
-      <View style={styles.bubbleWrapper}>
-        {/* Sender name for group chats */}
+      {/* Message bubble */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onLongPress={() => onLongPress?.(message)}
+        delayLongPress={500}
+        style={[
+          styles.bubble,
+          isMe ? styles.bubbleMe : styles.bubbleOther,
+          message.type === "image" || message.type === "video"
+            ? styles.mediaBubble
+            : null,
+        ]}
+      >
+        {/* Sender name inside bubble for group chats (for others only) */}
         {isGroup && !isMe && (
           <Typo
             size={12}
@@ -187,46 +250,49 @@ export default function MessageBubble({
           </Typo>
         )}
 
-        {/* Message bubble */}
-        <View
-          style={[
-            styles.bubble,
-            isMe ? styles.bubbleMe : styles.bubbleOther,
-            message.type === "image" || message.type === "video"
-              ? styles.mediaBubble
-              : null,
-          ]}
-        >
-          {renderContent()}
+        {/* "You" label for sender in group */}
+        {isGroup && isMe && (
+          <Typo
+            size={12}
+            fontWeight="600"
+            color={colors.primaryDark}
+            style={styles.senderName}
+          >
+            You
+          </Typo>
+        )}
 
-          {/* Time and status */}
-          <View style={styles.metadata}>
-            <Typo
-              size={10}
-              color={isMe ? "rgba(255,255,255,0.7)" : colors.neutral400}
-            >
-              {formatTime(message.createdAt)}
-            </Typo>
-            {isMe && (
-              <View style={styles.status}>
-                {message.isRead ? (
-                  <Icons.ChecksIcon
-                    size={verticalScale(14)}
-                    color="rgba(255,255,255,0.8)"
-                    weight="bold"
-                  />
-                ) : (
-                  <Icons.CheckIcon
-                    size={verticalScale(14)}
-                    color="rgba(255,255,255,0.7)"
-                    weight="bold"
-                  />
-                )}
-              </View>
-            )}
-          </View>
+        {renderContent()}
+
+        {/* Time and status */}
+        <View style={styles.metadata}>
+          <Typo size={10} color={colors.neutral500}>
+            {formatTime(message.createdAt)}
+          </Typo>
+          {isMe && (
+            <View style={styles.status}>
+              {message.isRead ? (
+                <Icons.ChecksIcon
+                  size={verticalScale(14)}
+                  color={colors.primary}
+                  weight="bold"
+                />
+              ) : (
+                <Icons.CheckIcon
+                  size={verticalScale(14)}
+                  color={colors.neutral500}
+                  weight="bold"
+                />
+              )}
+            </View>
+          )}
         </View>
-      </View>
+      </TouchableOpacity>
+
+      {/* Avatar for sender on right side */}
+      {isMe && isGroup && showAvatar && (
+        <Avatar uri={message.sender.avatar} size={36} />
+      )}
     </View>
   );
 }
@@ -234,9 +300,10 @@ export default function MessageBubble({
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    marginVertical: spacingY._3,
+    marginVertical: spacingY._7,
     paddingHorizontal: spacingX._15,
-    gap: spacingX._7,
+    gap: spacingX._10,
+    alignItems: "flex-end",
   },
   containerLeft: {
     justifyContent: "flex-start",
@@ -244,38 +311,35 @@ const styles = StyleSheet.create({
   containerRight: {
     justifyContent: "flex-end",
   },
-  bubbleWrapper: {
-    maxWidth: "75%",
-  },
-  senderName: {
-    marginBottom: spacingY._3,
-    marginLeft: spacingX._10,
-  },
   bubble: {
+    maxWidth: "72%",
     borderRadius: radius._15,
     paddingHorizontal: spacingX._12,
-    paddingVertical: spacingY._7,
-    minWidth: scale(60),
+    paddingVertical: spacingY._10,
+    minWidth: scale(80),
   },
   bubbleMe: {
-    backgroundColor: colors.primary,
-    borderBottomRightRadius: radius._5,
+    backgroundColor: colors.myBubble,
+    borderBottomRightRadius: radius._6,
   },
   bubbleOther: {
-    backgroundColor: colors.neutral100,
-    borderBottomLeftRadius: radius._5,
+    backgroundColor: colors.neutral700,
+    borderBottomLeftRadius: radius._6,
   },
   mediaBubble: {
-    padding: spacingX._3,
+    padding: spacingX._5,
     overflow: "hidden",
+  },
+  senderName: {
+    marginBottom: spacingY._5,
   },
   textContent: {
     lineHeight: verticalScale(20),
   },
   imageContent: {
-    width: scale(200),
-    height: verticalScale(150),
-    borderRadius: radius._12,
+    width: scale(180),
+    height: verticalScale(140),
+    borderRadius: radius._10,
   },
   videoContainer: {
     position: "relative",
@@ -284,11 +348,11 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: "50%",
     left: "50%",
-    transform: [{ translateX: -20 }, { translateY: -20 }],
+    transform: [{ translateX: -18 }, { translateY: -18 }],
     backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 40,
-    width: 40,
-    height: 40,
+    borderRadius: 36,
+    width: 36,
+    height: 36,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -296,21 +360,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacingX._10,
-    minWidth: scale(180),
+    minWidth: scale(160),
   },
   audioPlayButton: {
-    width: verticalScale(36),
-    height: verticalScale(36),
-    borderRadius: verticalScale(18),
-    backgroundColor: "rgba(255,255,255,0.2)",
+    width: verticalScale(32),
+    height: verticalScale(32),
+    borderRadius: verticalScale(16),
+    backgroundColor: colors.white,
     justifyContent: "center",
     alignItems: "center",
+  },
+  audioPlayButtonMe: {
+    backgroundColor: colors.white,
   },
   audioWaveform: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    height: verticalScale(24),
+    height: verticalScale(22),
     gap: 2,
   },
   waveformBar: {
@@ -318,14 +385,14 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   audioDuration: {
-    minWidth: scale(35),
+    minWidth: scale(32),
     textAlign: "right",
   },
   fileContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacingX._10,
-    minWidth: scale(150),
+    minWidth: scale(140),
   },
   fileInfo: {
     flex: 1,
@@ -334,7 +401,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
-    marginTop: spacingY._3,
+    marginTop: spacingY._5,
     gap: spacingX._3,
   },
   status: {
@@ -343,16 +410,38 @@ const styles = StyleSheet.create({
   // System message
   systemContainer: {
     alignItems: "center",
-    marginVertical: spacingY._10,
+    marginVertical: spacingY._15,
     paddingHorizontal: spacingX._20,
   },
   systemBubble: {
-    backgroundColor: colors.neutral100,
-    borderRadius: radius._10,
+    backgroundColor: colors.neutral200,
+    borderRadius: radius._15,
     paddingHorizontal: spacingX._15,
     paddingVertical: spacingY._7,
   },
-  systemText: {
-    textAlign: "center",
+  // Inline editing styles
+  editingContainer: {
+    width: "100%",
+  },
+  editInput: {
+    color: colors.neutral800,
+    fontSize: verticalScale(14),
+    padding: 0,
+    minHeight: verticalScale(20),
+    maxHeight: verticalScale(100),
+  },
+  editButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: spacingY._7,
+    gap: spacingX._7,
+  },
+  cancelBtn: {
+    padding: spacingX._5,
+  },
+  saveBtn: {
+    backgroundColor: colors.primary,
+    padding: spacingX._5,
+    borderRadius: radius._6,
   },
 });
