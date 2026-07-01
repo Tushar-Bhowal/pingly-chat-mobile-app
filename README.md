@@ -1,50 +1,97 @@
-# Welcome to your Expo app 👋
+# Mobile Chat App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A cross-platform real-time messaging app built with React Native and the MERN stack (MongoDB, Express, React Native, Node.js).
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Authentication** — email/password signup and login secured with JWT access + refresh tokens, plus email OTP verification and a password reset flow (Nodemailer)
+- **Direct & group conversations** — create 1:1 chats or named group conversations with multiple participants
+- **Real-time layer** — authenticated Socket.io connections that auto-join each user to their conversation rooms for live delivery
+- **Rich messaging UI** — message bubbles for text, images, video, audio, and file attachments, with reply, edit, delete, and read-receipt support built into the data model
+- **Profile management** — editable name/bio and avatar upload via Cloudinary
+- **Hardened API** — request validation with Zod, password hashing with bcrypt, security headers via Helmet, and rate limiting on auth/OTP endpoints
 
-   ```bash
-   npm install
-   ```
+## Tech Stack
 
-2. Start the app
+**Frontend**
+- React Native (Expo, Expo Router) with TypeScript
+- NativeWind (Tailwind CSS for React Native)
+- Socket.io-client, Axios
+- Expo Image Picker + Cloudinary for media uploads
 
-   ```bash
-   npx expo start
-   ```
+**Backend**
+- Node.js, Express 5, TypeScript
+- MongoDB with Mongoose
+- Socket.io for real-time communication
+- JWT (access + refresh tokens), bcrypt, Zod validation
+- Nodemailer for OTP emails, node-cache for in-memory caching/rate limiting
+- Helmet for security headers
 
-In the output, you'll find options to open the app in a
+## Screenshots
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+<!-- Add screenshots or a screen recording below -->
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+| Welcome / Auth | Conversations | Chat |
+| :---: | :---: | :---: |
+| _screenshot here_ | _screenshot here_ | _screenshot here_ |
 
-## Get a fresh project
+## How It Works
 
-When you're ready, run:
+On login, the backend issues a short-lived JWT access token and a longer-lived refresh token, which the app stores and uses to silently re-authenticate without logging the user out. New accounts are verified via a 4-digit OTP emailed through Nodemailer before the account becomes active. Once authenticated, the app opens a Socket.io connection (token-verified on the backend) that joins the user's own room plus a room per conversation, laying the groundwork for instant message delivery, typing indicators, and read receipts.
 
+## Running Locally
+
+### Prerequisites
+- Node.js 18+
+- A MongoDB instance (local or Atlas)
+- Expo Go app or an Android/iOS simulator
+
+### 1. Clone the repo
 ```bash
-npm run reset-project
+git clone https://github.com/<your-username>/mobile-chat-app.git
+cd mobile-chat-app
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Backend setup
+```bash
+cd backend
+npm install
+```
 
-## Learn more
+Create a `.env` file in `backend/`:
+```env
+PORT=3000
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_access_secret
+JWT_REFRESH_SECRET=your_jwt_refresh_secret
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_email_app_password
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+Start the server:
+```bash
+npm run dev
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### 3. Frontend setup
+```bash
+cd ../frontend
+npm install
+```
 
-## Join the community
+Update `API_BASE_URL` in `frontend/constants/index.ts` if your backend isn't running on `localhost:3000`, and set your own Cloudinary cloud name / upload preset there for media uploads.
 
-Join our community of developers creating universal apps.
+Start the app:
+```bash
+npx expo start
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Then open it in Expo Go, or run:
+```bash
+npm run android   # Android emulator
+npm run ios       # iOS simulator
+```
